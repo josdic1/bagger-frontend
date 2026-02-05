@@ -1,0 +1,74 @@
+:root[data-theme="haunted"] {
+  --bg: #07070a;
+  --panel-1: rgba(18, 18, 24, 0.72);
+  --panel-2: rgba(26, 26, 34, 0.72);
+  --border: rgba(180, 140, 255, 0.18);
+
+  --text-main: rgba(245, 245, 255, 0.92);
+  --text-dim: rgba(200, 200, 220, 0.65);
+
+  --accent: #b48cff;
+  --radius-sm: 14px;
+
+  --code-bg: rgba(0, 0, 0, 0.55);
+  --code-text: rgba(220, 220, 240, 0.7);
+}
+
+/* Ambient vignette + glow */
+:root[data-theme="haunted"] body {
+  background:
+    radial-gradient(
+      900px 500px at 50% 10%,
+      rgba(180, 140, 255, 0.12),
+      transparent 60%
+    ),
+    radial-gradient(
+      900px 700px at 50% 120%,
+      rgba(0, 0, 0, 0.9),
+      rgba(0, 0, 0, 1)
+    );
+}
+
+/* Cards get spectral bloom */
+:root[data-theme="haunted"] [data-ui="card"] {
+  background: var(--panel-1);
+  border: 1px solid var(--border);
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(180, 140, 255, 0.05),
+    0 0 40px rgba(180, 140, 255, 0.12);
+  backdrop-filter: blur(10px);
+}
+
+/* Hover: subtle “haunt” */
+:root[data-theme="haunted"] [data-ui="card"]:hover {
+  border-color: rgba(180, 140, 255, 0.35);
+  box-shadow:
+    0 18px 60px rgba(0, 0, 0, 0.55),
+    0 0 60px rgba(180, 140, 255, 0.18);
+}
+
+/* Chips pop */
+:root[data-theme="haunted"] [data-ui="chip"][data-active="true"] {
+  border-color: rgba(180, 140, 255, 0.55);
+  box-shadow: 0 0 22px rgba(180, 140, 255, 0.25);
+}
+
+/* Film flicker (very subtle) */
+@keyframes hauntedFlicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.985;
+  }
+}
+:root[data-theme="haunted"] [data-ui="home"] {
+  animation: hauntedFlicker 7s infinite;
+}
+:root[data-theme="haunted"] {
+  --panel: var(--panel-1);
+  --text: var(--text-main);
+  --muted: var(--text-dim);
+}

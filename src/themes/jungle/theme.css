@@ -1,0 +1,24 @@
+:root[data-theme="jungle"] {
+  --bg: #06140b;
+  --panel: rgba(12, 28, 18, 0.78);
+  --panel-2: rgba(9, 20, 13, 0.9);
+  --border: rgba(170, 255, 200, 0.14);
+  --border-2: rgba(170, 255, 200, 0.22);
+
+  --text: #eaffea;
+  --muted: rgba(234, 255, 234, 0.68);
+  --muted-2: rgba(234, 255, 234, 0.8);
+
+  --primary: #22c55e;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --info: #60a5fa;
+}
+
+:root[data-theme="jungle"] body {
+  background:
+    radial-gradient(900px 500px at 20% 10%, rgba(34, 197, 94, 0.20), transparent 55%),
+    radial-gradient(800px 450px at 80% 20%, rgba(34, 197, 94, 0.14), transparent 55%),
+    linear-gradient(180deg, #041009, #06140b);
+}
