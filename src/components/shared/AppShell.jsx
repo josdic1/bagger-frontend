@@ -6,19 +6,15 @@ import { ToastContainer } from "./ToastContainer";
 export function AppShell({ toasts, removeToast }) {
   return (
     <div data-ui="app">
-      {/* Toasts should be global so every page can use them */}
       <ToastContainer toasts={toasts} removeToast={removeToast} />
-
       <header data-ui="header">
         <NavBar />
       </header>
-
       <main data-ui="main">
-        <Outlet />
+        <Outlet /> {/* This renders HomePage, LoginPage, etc. */}
       </main>
-
       <footer data-ui="footer">
-        <p>© {new Date().getFullYear()}</p>
+        <p>© 2026 // BAGGER</p>
       </footer>
     </div>
   );

@@ -16,24 +16,10 @@ export function HomePage() {
     { label: "Cheats", value: c },
   ];
 
-  if (loading || refreshing) {
-    return (
-      <div data-ui="grid-system">
-        <aside data-ui="column">
-          <SkeletonCard count={5} />
-        </aside>
-        <section data-ui="column">
-          <SkeletonCard count={8} />
-        </section>
-        <main data-ui="column">
-          <SkeletonCard count={1} />
-        </main>
-      </div>
-    );
-  }
+  const isBusy = loading || refreshing;
 
   return (
-    <div data-ui="home">
+    <div data-ui="home" style={{ minHeight: "70vh" }}>
       {/* Header */}
       <section data-ui="card" style={{ width: "min(980px, 100%)" }}>
         <div
@@ -60,7 +46,7 @@ export function HomePage() {
             <button
               data-ui="btn-refresh"
               onClick={refresh}
-              disabled={loading || refreshing}
+              disabled={isBusy}
               title="Force refresh (ignore cache)"
             >
               <RefreshCw
@@ -79,14 +65,19 @@ export function HomePage() {
         <div data-ui="card">
           <div data-ui="label">Overview</div>
           <div style={{ height: 10 }} />
-          <div data-ui="stats">
-            {stats.map((s) => (
-              <div key={s.label} data-ui="stat">
-                <div data-ui="stat-value">{s.value}</div>
-                <div data-ui="stat-label">{s.label}</div>
-              </div>
-            ))}
-          </div>
+
+          {isBusy ? (
+            <SkeletonCard count={3} />
+          ) : (
+            <div data-ui="stats">
+              {stats.map((s) => (
+                <div key={s.label} data-ui="stat">
+                  <div data-ui="stat-value">{s.value}</div>
+                  <div data-ui="stat-label">{s.label}</div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ height: 14 }} />
           <div data-ui="divider" />
@@ -101,7 +92,7 @@ export function HomePage() {
           <div data-ui="label">Recent Cheats</div>
           <div style={{ height: 10 }} />
 
-          {loading ? (
+          {isBusy ? (
             <>
               <SkeletonCard />
               <SkeletonCard />

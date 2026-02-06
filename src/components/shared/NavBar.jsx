@@ -1,19 +1,20 @@
+// src/components/shared/NavBar.jsx
 import { Link, useNavigate } from "react-router-dom";
 import { useToastTrigger } from "../../hooks/useToast";
+import { useAuth } from "../../hooks/useAuth";
 
 export function NavBar() {
   const nav = useNavigate();
   const { addToast } = useToastTrigger();
+  const { user, logout } = useAuth();
 
-  const token = localStorage.getItem("token");
-
-  function logout() {
-    localStorage.removeItem("token");
+  function handleLogout() {
+    logout();
 
     addToast({
       type: "success",
       title: "Logged out",
-      message: "Token cleared.",
+      message: "Session cleared.",
     });
 
     nav("/login", { replace: true });
@@ -29,10 +30,13 @@ export function NavBar() {
         <Link to="/" data-ui="nav-link">
           Home
         </Link>
+                <Link to="/topics" data-ui="nav-link">
+          Topics
+        </Link>
       </div>
 
       <div data-ui="nav-right">
-        {!token ? (
+        {!user ? (
           <>
             <Link to="/login" data-ui="nav-link">
               Login
@@ -46,7 +50,7 @@ export function NavBar() {
             type="button"
             data-ui="btn"
             style={{ width: "auto" }}
-            onClick={logout}
+            onClick={handleLogout}
           >
             Logout
           </button>

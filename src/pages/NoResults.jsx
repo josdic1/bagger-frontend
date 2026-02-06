@@ -1,4 +1,4 @@
-export default function NoResults({ title = "No results", hint = "Try different filters." }) {
+export function NoResults({ title = "No results", hint = "Try different filters." }) {
   return (
     <div className="no-results">
       <div className="no-results-title">{title}</div>

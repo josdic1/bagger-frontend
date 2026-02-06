@@ -86,9 +86,9 @@ export const apiRequest = async (path, options = {}) => {
   }
 
   if (response.status === 401) {
-    localStorage.removeItem("token");
-    window.location.href = "/login";
-    throw new Error("Session expired");
+    // REMOVE the redirect and the removal lines.
+    // Just throw the error so the AuthProvider can catch it.
+    throw new Error("401");
   }
 
   if (!response.ok) {

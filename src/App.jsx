@@ -1,29 +1,20 @@
-import { Outlet } from "react-router-dom";
-import { NavBar } from "./components/shared/NavBar";
-import { ToastContainer } from "./components/shared/ToastContainer";
 import { useToast } from "./hooks/useToast";
+import { useAuth } from "./hooks/useAuth";
 import { ToastContext } from "./contexts/ToastContext";
+import { AppShell } from "./components/shared/AppShell";
 
 export default function App() {
+  const { loading } = useAuth(); // The Gatekeeper
   const { toasts, addToast, removeToast } = useToast();
+
+  // If AuthProvider is still talking to the DB, don't show the UI yet
+  if (loading) {
+    return <div className="app-init">// BAGGER :: VERIFYING SESSION...</div>;
+  }
 
   return (
     <ToastContext.Provider value={{ addToast }}>
-      <div data-ui="app">
-        <ToastContainer toasts={toasts} removeToast={removeToast} />
-
-        <header data-ui="header">
-          <NavBar />
-        </header>
-
-        <main data-ui="main">
-          <Outlet />
-        </main>
-
-        <footer data-ui="footer">
-          <p>© {new Date().getFullYear()}</p>
-        </footer>
-      </div>
+      <AppShell toasts={toasts} removeToast={removeToast} />
     </ToastContext.Provider>
   );
 }

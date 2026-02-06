@@ -5,6 +5,7 @@ import { api, retryRequest } from "../utils/api";
 import { asArrayOfObjects } from "../utils/safe";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
+const API_URL = "http://localhost:8080";
 
 export function DataProvider({ children }) {
   const { user, loading: authLoading } = useContext(AuthContext);
@@ -14,7 +15,7 @@ export function DataProvider({ children }) {
   const [loading, setLoading] = useState(true);
   // background sync indicator (spin icon)
   const [refreshing, setRefreshing] = useState(false);
-
+  const [error, setError] = useState(null);
   const [platforms, setPlatforms] = useState([]);
   const [topics, setTopics] = useState([]);
   const [cheats, setCheats] = useState([]);
@@ -90,6 +91,7 @@ export function DataProvider({ children }) {
 
   const bootstrap = useCallback(async () => {
     if (!loggedIn) return;
+    setError(null);
 
     const cached = readCache();
 
@@ -110,8 +112,9 @@ export function DataProvider({ children }) {
       const data = await retryRequest(() => api.get("/api/users/bootstrap"));
       const { nextPlatforms, nextTopics, nextCheats, nextUserCheats } =
         applyBootstrap(data);
-
       writeCache(nextPlatforms, nextTopics, nextCheats, nextUserCheats);
+    } catch (err) {
+      setError(err); // <-- Essential to catch initial fetch failures
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -124,17 +127,15 @@ export function DataProvider({ children }) {
     setRefreshing(true);
 
     try {
-      const data = await api.get("/api/users/bootstrap"); // no retry needed on manual refresh
-      const { nextPlatforms, nextTopics, nextCheats, nextUserCheats } =
-        applyBootstrap(data);
-
-      writeCache(nextPlatforms, nextTopics, nextCheats, nextUserCheats);
-      localStorage.setItem(`${cacheKey}_time`, String(Date.now()));
+      const data = await retryRequest(() => api.get("/api/users/bootstrap"));
+      applyBootstrap(data);
+    } catch (err) {
+      setError(err); // <--- Capture the failure here!
     } finally {
+      setLoading(false);
       setRefreshing(false);
     }
-  }, [loggedIn, applyBootstrap, writeCache, cacheKey]);
-
+  }, [loggedIn, readCache, applyBootstrap, writeCache]);
   useEffect(() => {
     if (authLoading) return;
 
@@ -163,6 +164,7 @@ export function DataProvider({ children }) {
       bootstrap, // TTL-based
       refresh, // force
       clearCache,
+      error,
     }),
     [
       loading,
@@ -174,6 +176,7 @@ export function DataProvider({ children }) {
       bootstrap,
       refresh,
       clearCache,
+      error,
     ],
   );
 

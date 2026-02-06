@@ -1,5 +1,5 @@
 // src/components/shared/ThemeSelector.jsx
-import { useTheme } from "../../providers/ThemeProvider";
+import { useTheme } from "../providers/ThemeProvider";
 
 export function ThemeSelector() {
   const { theme, setTheme } = useTheme();
