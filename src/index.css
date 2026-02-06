@@ -620,3 +620,9 @@ select {
   border-color: var(--accent);
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
 }
+
+/* ADD THIS to src/index.css (optional small additions for cmd palette items) */
+[data-ui="cmd-item"][data-active="true"] {
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent) 25%, transparent);
+}

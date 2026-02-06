@@ -1,45 +1,137 @@
-import { Link } from "react-router-dom";
-import { useData } from "../../hooks/useData";
+// src/components/cheats/CheatItem.jsx
+import { useMemo } from "react";
+import { Eye, Pencil, Copy } from "lucide-react";
+import { useToastTrigger } from "../../hooks/useToast";
 
-export function CheatItem({ cheat }) {
-  const { deleteCheat } = useData();
+function uniqInts(arr) {
+  return Array.from(
+    new Set((Array.isArray(arr) ? arr : []).filter(Number.isFinite)),
+  );
+}
 
-  const onDelete = async () => {
-    if (!confirm(`Delete cheat "${cheat.title}"?`)) return;
-    await deleteCheat(cheat.id);
+async function copyText(text) {
+  const s = String(text ?? "");
+  if (!s) return false;
+
+  try {
+    await navigator.clipboard.writeText(s);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = s;
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export function CheatItem({ cheat, platformById, topicById, onView, onEdit }) {
+  const { addToast } = useToastTrigger();
+
+  const platformNames = useMemo(() => {
+    const ids = uniqInts(cheat?.platform_ids);
+    return ids.map((id) => platformById?.get(id)?.name).filter(Boolean);
+  }, [cheat?.platform_ids, platformById]);
+
+  const topicNames = useMemo(() => {
+    const ids = uniqInts(cheat?.topic_ids);
+    return ids.map((id) => topicById?.get(id)?.name).filter(Boolean);
+  }, [cheat?.topic_ids, topicById]);
+
+  const onCopy = async () => {
+    const ok = await copyText(cheat?.code || "");
+    addToast({
+      type: ok ? "success" : "error",
+      title: ok ? "Copied" : "Copy failed",
+      message: ok
+        ? "Code copied to clipboard."
+        : "Clipboard blocked by the browser.",
+    });
   };
 
+  const preview = String(cheat?.code || "");
+  const previewText = preview.slice(0, 140);
+
   return (
-    <div
-      style={{
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: 12,
-        padding: 14,
-      }}
-    >
+    <div data-ui="item">
       <div
-        style={{ display: "flex", justifyContent: "space-between", gap: 10 }}
+        data-ui="row"
+        style={{ justifyContent: "space-between", alignItems: "start" }}
       >
         <div style={{ display: "grid", gap: 4 }}>
-          <div style={{ fontWeight: 700 }}>{cheat.title}</div>
-          <div style={{ opacity: 0.75, fontSize: 12 }}>
+          <div data-ui="item-title">{cheat.title}</div>
+          <div data-ui="item-meta">
             {cheat.is_public ? "Public" : "Private"} •{" "}
             {(cheat.platform_ids || []).length} platforms •{" "}
             {(cheat.topic_ids || []).length} topics
           </div>
+
+          {platformNames.length || topicNames.length ? (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 6,
+              }}
+            >
+              {platformNames.slice(0, 3).map((n) => (
+                <span key={`p-${n}`} data-ui="pill">
+                  {n}
+                </span>
+              ))}
+              {topicNames.slice(0, 3).map((n) => (
+                <span key={`t-${n}`} data-ui="pill" data-variant="info">
+                  {n}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
-        <div style={{ display: "flex", gap: 10, alignItems: "start" }}>
-          <Link to={`/cheat/${cheat.id}/edit`}>Edit</Link>
-          <button type="button" onClick={onDelete}>
-            Delete
+
+        <div data-ui="row" style={{ gap: 8 }}>
+          <button
+            type="button"
+            data-ui="btn-refresh"
+            onClick={onCopy}
+            title="Copy code"
+          >
+            <Copy size={16} />
+            <span>Copy</span>
+          </button>
+          <button
+            type="button"
+            data-ui="btn-refresh"
+            onClick={onView}
+            title="View"
+          >
+            <Eye size={16} />
+            <span>View</span>
+          </button>
+          <button
+            type="button"
+            data-ui="btn-refresh"
+            onClick={onEdit}
+            title="Edit"
+          >
+            <Pencil size={16} />
+            <span>Edit</span>
           </button>
         </div>
       </div>
 
-      <pre style={{ marginTop: 10, whiteSpace: "pre-wrap", opacity: 0.9 }}>
-        {String(cheat.code || "").slice(0, 240)}
-        {String(cheat.code || "").length > 240 ? "…" : ""}
-      </pre>
+      <div data-ui="item-code">
+        {previewText}
+        {preview.length > 140 ? "…" : ""}
+      </div>
     </div>
   );
 }
