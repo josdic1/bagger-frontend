@@ -6,7 +6,12 @@ import { LoginPage } from "./pages/LoginPage.jsx";
 import { SignupPage } from "./pages/SignupPage.jsx";
 import { ProtectedRoute } from "./components/shared/ProtectedRoute.jsx";
 import { TopicForm } from "./components/topics/TopicForm.jsx";
-import { TopicPage } from "./pages/TopicPage.jsx";
+import { TopicsPage } from "./pages/TopicsPage.jsx";
+import { PlatformsPage } from "./pages/PlatformsPage.jsx";
+import { PlatformForm } from "./components/platforms/PlatformForm.jsx";
+import { CheatsPage } from "./pages/CheatsPage.jsx";
+import { CheatForm } from "./components/cheats/CheatForm.jsx";
+import { VisualDashboard } from "./components/shared/VisualDashboard.jsx";
 
 export const routes = [
   {
@@ -23,9 +28,19 @@ export const routes = [
         element: <ProtectedRoute />,
         children: [
           { index: true, element: <HomePage /> },
-          { path: "topics", element: <TopicPage /> },
+          { path: "data", element: <VisualDashboard /> },
+
+          { path: "topics", element: <TopicsPage /> },
           { path: "topic/new", element: <TopicForm /> },
           { path: "topic/:id/edit", element: <TopicForm /> },
+
+          { path: "platforms", element: <PlatformsPage /> },
+          { path: "platform/new", element: <PlatformForm /> },
+          { path: "platform/:id/edit", element: <PlatformForm /> },
+
+          { path: "cheats", element: <CheatsPage /> },
+          { path: "cheat/new", element: <CheatForm /> },
+          { path: "cheat/:id/edit", element: <CheatForm /> },
         ],
       },
     ],

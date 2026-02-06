@@ -7,6 +7,13 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const forceLogout = () => {
+    localStorage.removeItem("token");
+    setUser(null);
+    // hard redirect so ALL state resets (prevents “verifying…” loops)
+    window.location.replace("/login");
+  };
+
   useEffect(() => {
     const checkSession = async () => {
       const token = localStorage.getItem("token");
@@ -19,8 +26,19 @@ export function AuthProvider({ children }) {
         const userData = await retryRequest(() => api.get("/api/users/me"));
         setUser(userData);
       } catch (err) {
+        // handle your api.js “401” error style
+        const is401 =
+          err?.status === 401 ||
+          err?.message === "401" ||
+          String(err?.message || "").includes("401");
+
+        if (is401) {
+          forceLogout();
+          return;
+        }
+
+        // other errors: don’t hang forever, but don’t nuke session either
         console.error("Session check failed:", err);
-        localStorage.removeItem("token");
         setUser(null);
       } finally {
         setLoading(false);
@@ -42,7 +60,6 @@ export function AuthProvider({ children }) {
 
       return { success: false, error: "Invalid response from server" };
     } catch (err) {
-      console.error("Login failed", err);
       return { success: false, error: err.message || "Login failed" };
     }
   };
@@ -55,18 +72,12 @@ export function AuthProvider({ children }) {
         password: userData.password,
       });
     } catch (err) {
-      console.error("Signup failed", err);
-      return {
-        success: false,
-        error: err.message || "Signup failed. Please try again.",
-      };
+      return { success: false, error: err.message || "Signup failed" };
     }
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
-    window.location.href = "/login";
+    forceLogout();
   };
 
   const value = useMemo(

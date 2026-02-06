@@ -27,13 +27,31 @@ export function NavBar() {
           // BAGGER
         </Link>
 
-        <Link to="/" data-ui="nav-link">
+        <Link to="/data" data-ui="nav-link">
           Home
         </Link>
-                <Link to="/topics" data-ui="nav-link">
+        <Link to="/topics" data-ui="nav-link">
           Topics
         </Link>
+
+        <Link to="/topic/new" data-ui="nav-link">
+          +
+        </Link>
       </div>
+
+      <Link to="/platforms" data-ui="nav-link">
+        Platforms
+      </Link>
+      <Link to="/cheats" data-ui="nav-link">
+        Cheats
+      </Link>
+
+      <Link to="/platform/new" data-ui="nav-link">
+        + Platform
+      </Link>
+      <Link to="/cheat/new" data-ui="nav-link">
+        + Cheat
+      </Link>
 
       <div data-ui="nav-right">
         {!user ? (

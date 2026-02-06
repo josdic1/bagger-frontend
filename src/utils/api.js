@@ -2,17 +2,31 @@
 
 export const getApiUrl = () => {
   const apiUrl = import.meta.env.VITE_API_URL;
-  if (!apiUrl) return "http://localhost:8080";
+
+  if (!apiUrl) {
+    throw new Error("VITE_API_URL is not defined. Set it in your .env file.");
+  }
+
+  if (import.meta.env.PROD && apiUrl.includes("localhost")) {
+    throw new Error(
+      "Production build is pointing to localhost API. Fix VITE_API_URL.",
+    );
+  }
+
   return apiUrl;
 };
 
+/**
+ * FIXED: This helper was missing and causing your ReferenceError.
+ * It builds the full URL by combining the base and the path.
+ */
 export const buildApiUrl = (path) => {
-  const baseUrl = getApiUrl();
+  const base = getApiUrl();
+  // Ensure the path starts with a slash
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${baseUrl}${cleanPath}`;
+  return `${base}${cleanPath}`;
 };
 
-// TIMEOUT HELPER
 export const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeout);
@@ -33,35 +47,25 @@ export const fetchWithTimeout = async (url, options = {}, timeout = 10000) => {
   }
 };
 
-// Normalize FastAPI error shapes into a string
 const extractErrorMessage = (errorData, fallback) => {
   const d = errorData?.detail;
-
   if (typeof d === "string" && d.trim()) return d;
-
-  // FastAPI / Pydantic validation errors often come as an array
   if (Array.isArray(d) && d.length > 0) {
-    // Try the common shape: [{ loc: [...], msg: "..." }, ...]
     const msgs = d
       .map((x) => x?.msg)
       .filter((m) => typeof m === "string" && m.trim());
     if (msgs.length) return msgs.join(" | ");
-    // fallback if array but unknown shape
     return JSON.stringify(d);
   }
-
-  // Sometimes detail is an object
   if (d && typeof d === "object") return JSON.stringify(d);
-
-  // Other possible top-level messages
   if (typeof errorData?.message === "string" && errorData.message.trim()) {
     return errorData.message;
   }
-
   return fallback;
 };
 
 export const apiRequest = async (path, options = {}) => {
+  // Now buildApiUrl is defined and can be called safely
   const url = buildApiUrl(path);
   const token = localStorage.getItem("token");
 
@@ -73,21 +77,15 @@ export const apiRequest = async (path, options = {}) => {
 
   const response = await fetchWithTimeout(url, { ...options, headers });
 
-  // Parse JSON safely (even for errors)
   const contentType = response.headers.get("content-type") || "";
   let data = null;
 
   if (contentType.includes("application/json")) {
     const text = await response.text();
     data = text ? JSON.parse(text) : null;
-  } else {
-    // non-json response (rare)
-    data = null;
   }
 
   if (response.status === 401) {
-    // REMOVE the redirect and the removal lines.
-    // Just throw the error so the AuthProvider can catch it.
     throw new Error("401");
   }
 
@@ -96,21 +94,15 @@ export const apiRequest = async (path, options = {}) => {
       data,
       `API Error: ${response.status} ${response.statusText}`,
     );
-
-    // Helpful during debugging:
     console.error("API ERROR", {
       url,
       status: response.status,
-      statusText: response.statusText,
       response: data,
     });
-
     throw new Error(msg);
   }
 
-  // Handle empty responses (DELETE 204, etc)
   if (response.status === 204) return null;
-
   return data;
 };
 

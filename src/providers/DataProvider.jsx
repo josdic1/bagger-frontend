@@ -1,3 +1,4 @@
+// src/providers/DataProvider.jsx
 import { useState, useEffect, useContext, useCallback, useMemo } from "react";
 import { DataContext } from "../contexts/DataContext";
 import { AuthContext } from "../contexts/AuthContext";
@@ -5,26 +6,23 @@ import { api, retryRequest } from "../utils/api";
 import { asArrayOfObjects } from "../utils/safe";
 
 const CACHE_TTL_MS = 5 * 60 * 1000;
-const API_URL = "http://localhost:8080";
 
 export function DataProvider({ children }) {
   const { user, loading: authLoading } = useContext(AuthContext);
   const loggedIn = !!user;
 
-  // hard block only when we have nothing to show
   const [loading, setLoading] = useState(true);
-  // background sync indicator (spin icon)
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [platforms, setPlatforms] = useState([]);
   const [topics, setTopics] = useState([]);
   const [cheats, setCheats] = useState([]);
-  const [userCheats, setUserCheats] = useState([]); // overlays (favorites/notes), optional
+  const [userCheats, setUserCheats] = useState([]);
 
-  const cacheKey = useMemo(() => {
-    if (!user?.id) return null;
-    return `bagger_cache_u${user.id}`;
-  }, [user?.id]);
+  const cacheKey = useMemo(
+    () => (user?.id ? `bagger_cache_u${user.id}` : null),
+    [user?.id],
+  );
 
   const writeCache = useCallback(
     (nextPlatforms, nextTopics, nextCheats, nextUserCheats) => {
@@ -79,7 +77,7 @@ export function DataProvider({ children }) {
     const nextPlatforms = asArrayOfObjects(data?.platforms);
     const nextTopics = asArrayOfObjects(data?.topics);
     const nextCheats = asArrayOfObjects(data?.cheats);
-    const nextUserCheats = asArrayOfObjects(data?.user_cheats); // backend uses user_cheats
+    const nextUserCheats = asArrayOfObjects(data?.user_cheats);
 
     setPlatforms(nextPlatforms);
     setTopics(nextTopics);
@@ -96,12 +94,10 @@ export function DataProvider({ children }) {
     const cached = readCache();
 
     if (cached) {
-      // show cached immediately
       setPlatforms(cached.platforms);
       setTopics(cached.topics);
       setCheats(cached.cheats);
       setUserCheats(cached.userCheats);
-
       setLoading(false);
       setRefreshing(true);
     } else {
@@ -114,14 +110,13 @@ export function DataProvider({ children }) {
         applyBootstrap(data);
       writeCache(nextPlatforms, nextTopics, nextCheats, nextUserCheats);
     } catch (err) {
-      setError(err); // <-- Essential to catch initial fetch failures
+      setError(err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   }, [loggedIn, readCache, applyBootstrap, writeCache]);
 
-  // Force refresh: ignores TTL (use for “sync” button)
   const refresh = useCallback(async () => {
     if (!loggedIn) return;
     setRefreshing(true);
@@ -130,12 +125,13 @@ export function DataProvider({ children }) {
       const data = await retryRequest(() => api.get("/api/users/bootstrap"));
       applyBootstrap(data);
     } catch (err) {
-      setError(err); // <--- Capture the failure here!
+      setError(err);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [loggedIn, readCache, applyBootstrap, writeCache]);
+  }, [loggedIn, applyBootstrap]);
+
   useEffect(() => {
     if (authLoading) return;
 
@@ -153,6 +149,107 @@ export function DataProvider({ children }) {
     bootstrap();
   }, [authLoading, loggedIn, bootstrap, clearCache]);
 
+  const createTopic = useCallback(
+    async (data) => {
+      try {
+        await retryRequest(() => api.post("/api/topics/", data));
+        await refresh();
+      } catch (err) {
+        setError(err);
+      }
+    },
+    [refresh],
+  );
+
+  const updateTopic = useCallback(async (topicId, updates) => {
+    try {
+      await retryRequest(() => api.patch(`/api/topics/${topicId}`, updates));
+      setTopics((prev) =>
+        prev.map((t) => (t.id === topicId ? { ...t, ...updates } : t)),
+      );
+    } catch (err) {
+      setError(err);
+    }
+  }, []);
+
+  const deleteTopic = useCallback(async (topicId) => {
+    try {
+      await retryRequest(() => api.delete(`/api/topics/${topicId}`));
+      setTopics((prev) => prev.filter((t) => t.id !== topicId));
+    } catch (err) {
+      setError(err);
+    }
+  }, []);
+
+  const createPlatform = useCallback(
+    async (data) => {
+      try {
+        await retryRequest(() => api.post("/api/platforms/", data));
+        await refresh();
+      } catch (err) {
+        setError(err);
+      }
+    },
+    [refresh],
+  );
+
+  const updatePlatform = useCallback(async (platformId, updates) => {
+    try {
+      await retryRequest(() =>
+        api.patch(`/api/platforms/${platformId}`, updates),
+      );
+      setPlatforms((prev) =>
+        prev.map((p) => (p.id === platformId ? { ...p, ...updates } : p)),
+      );
+    } catch (err) {
+      setError(err);
+    }
+  }, []);
+
+  const deletePlatform = useCallback(async (platformId) => {
+    try {
+      await retryRequest(() => api.delete(`/api/platforms/${platformId}`));
+      setPlatforms((prev) => prev.filter((p) => p.id !== platformId));
+    } catch (err) {
+      setError(err);
+    }
+  }, []);
+
+  const createCheat = useCallback(async (payload) => {
+    try {
+      const created = await retryRequest(() =>
+        api.post("/api/cheats/", payload),
+      );
+      setCheats((prev) => [created, ...prev]);
+      return created;
+    } catch (err) {
+      setError(err);
+      throw err;
+    }
+  }, []);
+
+  const updateCheat = useCallback(async (cheatId, patch) => {
+    try {
+      const updated = await retryRequest(() =>
+        api.patch(`/api/cheats/${cheatId}`, patch),
+      );
+      setCheats((prev) => prev.map((c) => (c.id === cheatId ? updated : c)));
+      return updated;
+    } catch (err) {
+      setError(err);
+      throw err;
+    }
+  }, []);
+
+  const deleteCheat = useCallback(async (cheatId) => {
+    try {
+      await retryRequest(() => api.delete(`/api/cheats/${cheatId}`));
+      setCheats((prev) => prev.filter((c) => c.id !== cheatId));
+    } catch (err) {
+      setError(err);
+    }
+  }, []);
+
   const value = useMemo(
     () => ({
       loading,
@@ -161,8 +258,21 @@ export function DataProvider({ children }) {
       topics,
       cheats,
       userCheats,
-      bootstrap, // TTL-based
-      refresh, // force
+
+      createTopic,
+      updateTopic,
+      deleteTopic,
+
+      createPlatform,
+      updatePlatform,
+      deletePlatform,
+
+      createCheat,
+      updateCheat,
+      deleteCheat,
+
+      bootstrap,
+      refresh,
       clearCache,
       error,
     }),
@@ -173,6 +283,15 @@ export function DataProvider({ children }) {
       topics,
       cheats,
       userCheats,
+      createTopic,
+      updateTopic,
+      deleteTopic,
+      createPlatform,
+      updatePlatform,
+      deletePlatform,
+      createCheat,
+      updateCheat,
+      deleteCheat,
       bootstrap,
       refresh,
       clearCache,

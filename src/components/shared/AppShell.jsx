@@ -2,10 +2,12 @@
 import { Outlet } from "react-router-dom";
 import { NavBar } from "./NavBar";
 import { ToastContainer } from "./ToastContainer";
+import { SyncIndicator } from "./SyncIndicator";
 
 export function AppShell({ toasts, removeToast }) {
   return (
     <div data-ui="app">
+      <SyncIndicator />
       <ToastContainer toasts={toasts} removeToast={removeToast} />
       <header data-ui="header">
         <NavBar />
