@@ -42,22 +42,33 @@ export function CheatModal({ open, onClose, mode, cheat }) {
 
   const [formData, setFormData] = useState(initial);
 
-  // Reset when opened / switching edit target
   useEffect(() => {
     if (!open) return;
-    setFormData(initial);
+
+    // Only reset form when modal opens, not when cheat updates
+    const newInitial =
+      inEditMode && cheat
+        ? {
+            title: cheat.title ?? "",
+            code: cheat.code ?? "",
+            notes: cheat.notes ?? "",
+            is_public: Boolean(cheat.is_public),
+            platform_ids: uniqInts(cheat.platform_ids),
+            topic_ids: uniqInts(cheat.topic_ids),
+          }
+        : {
+            title: "",
+            code: "",
+            notes: "",
+            is_public: true,
+            platform_ids: [],
+            topic_ids: [],
+          };
+
+    setFormData(newInitial);
     setErr(null);
     setSaving(false);
-  }, [open, initial]);
-
-  // Close on outside click
-  useEffect(() => {
-    function onKey(e) {
-      if (e.key === "Escape" && open) onClose?.();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open]); // ONLY depend on 'open', not 'initial'
 
   if (!open) return null;
 

@@ -1,96 +1,135 @@
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useToastTrigger } from "../hooks/useToast";
 import { useAuth } from "../hooks/useAuth";
-import { useNavigate, Link } from "react-router-dom";
-import { useState, useEffect } from "react";
 import { UserPlus } from "lucide-react";
 
 export function SignupPage() {
-  const { user, signup } = useAuth();
-  const navigate = useNavigate();
+  const nav = useNavigate();
+  const { addToast } = useToastTrigger();
+  const { signup, user } = useAuth();
 
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-  });
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user) navigate("/");
-  }, [user, navigate]);
+    if (user) nav("/", { replace: true });
+  }, [user, nav]);
 
-  const onFormChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-
-  const handleSubmit = async (e) => {
+  async function onSubmit(e) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
+    if (submitting) return;
 
-    const result = await signup(formData);
+    setSubmitting(true);
+    try {
+      if (!name || !email || !password) {
+        addToast({
+          type: "error",
+          title: "Missing info",
+          message: "Enter name, email, and password.",
+        });
+        return;
+      }
 
-    setLoading(false);
+      const result = await signup({ name, email, password });
 
-    if (result.success) navigate("/");
-    else setError(result.error);
-  };
+      if (!result?.success) {
+        addToast({
+          type: "error",
+          title: "Signup failed",
+          message: result?.error || "Unable to create account.",
+        });
+        return;
+      }
 
-  const rootState = ["page", loading && "is-loading", error && "has-error"]
-    .filter(Boolean)
-    .join(" ");
+      addToast({
+        type: "success",
+        title: "Account created",
+        message: "You’re in.",
+      });
+      nav("/", { replace: true });
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <div data-ui="auth" className={rootState}>
-      <div data-ui="card">
-        <header data-ui="header">
-          <UserPlus size={36} />
-          <h1>Create account</h1>
-          <p>Establish credentials</p>
-        </header>
+    <div data-ui="auth-page">
+      <form data-ui="auth-form" onSubmit={onSubmit}>
+        <div data-ui="auth-header">
+          <div data-ui="row" style={{ justifyContent: "center", gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => {
+                setName("Josh");
+                setEmail("josh@josh.com");
+                setPassword("1111");
+              }}
+              title="Auto-fill demo credentials"
+              style={{
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                opacity: 0.35,
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.35")}
+            >
+              <UserPlus size={22} stroke="var(--text-main)" strokeWidth={1.8} />
+            </button>
 
-        <form onSubmit={handleSubmit} data-ui="form">
-          {error && <div data-ui="error">{error}</div>}
+            <div data-ui="title" style={{ fontSize: 22 }}>
+              Bagger
+            </div>
+          </div>
 
+          <div data-ui="auth-subtitle">Create credentials</div>
+        </div>
+
+        <div data-ui="stack">
           <input
             data-ui="input"
-            name="name"
             type="text"
             placeholder="Name"
-            value={formData.name}
-            onChange={onFormChange}
-            required
+            autoComplete="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
           />
-
           <input
             data-ui="input"
-            name="email"
             type="email"
             placeholder="Email"
-            value={formData.email}
-            onChange={onFormChange}
-            required
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
           />
-
           <input
             data-ui="input"
-            name="password"
             type="password"
             placeholder="Password"
-            value={formData.password}
-            onChange={onFormChange}
-            required
+            autoComplete="new-password"
+            minLength={4}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
 
-          <button data-ui="button" type="submit" disabled={loading}>
-            {loading ? "Creating…" : "Create"}
+          <button data-ui="btn" type="submit" disabled={submitting}>
+            {submitting ? "Creating…" : "Create"}
           </button>
+        </div>
 
-          <p data-ui="link">
-            Already have an account? <Link to="/login">Sign in</Link>
-          </p>
-        </form>
-      </div>
+        <div data-ui="auth-footer">
+          Already have an account?{" "}
+          <Link to="/login" style={{ color: "var(--accent)", fontWeight: 900 }}>
+            Sign in
+          </Link>
+        </div>
+      </form>
     </div>
   );
 }

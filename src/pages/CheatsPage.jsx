@@ -1,4 +1,3 @@
-// src/pages/CheatsPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useData } from "../hooks/useData";
 import { RefreshCw, Search, Plus, Command } from "lucide-react";
@@ -8,7 +7,8 @@ import { CheatViewModal } from "../components/cheats/CheatViewModal";
 import { CommandPalette } from "../components/cheats/CommandPalette";
 import { SkeletonCard } from "../components/shared/SkeletonCard";
 
-const PAGE_SIZE = 10;
+// Updated: Twice as many cards per page
+const PAGE_SIZE = 20;
 
 function uniqInts(arr) {
   return Array.from(
@@ -21,6 +21,7 @@ export function CheatsPage() {
     loading,
     refreshing,
     cheats = [],
+    deleteCheat,
     platforms = [],
     topics = [],
     refresh,
@@ -28,26 +29,26 @@ export function CheatsPage() {
 
   // UI state
   const [q, setQ] = useState("");
-  const [platformFilter, setPlatformFilter] = useState([]); // ids
-  const [topicFilter, setTopicFilter] = useState([]); // ids
+  const [debouncedQ, setDebouncedQ] = useState("");
+  const [platformFilter, setPlatformFilter] = useState([]);
+  const [topicFilter, setTopicFilter] = useState([]);
   const [page, setPage] = useState(1);
 
-  // modal state
+  // Modal state
   const [editOpen, setEditOpen] = useState(false);
-  const [editingId, setEditingId] = useState(null); // int | null
-
-  // view modal
+  const [editingId, setEditingId] = useState(null);
   const [viewOpen, setViewOpen] = useState(false);
-  const [viewingId, setViewingId] = useState(null); // int | null
-
-  // cmd+k
+  const [viewingId, setViewingId] = useState(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   const isBusy = loading || refreshing;
-
   const searchRef = useRef(null);
 
-  // Keyboard shortcuts: Cmd+K, /, n, Esc, arrows for paging
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQ(q), 200);
+    return () => clearTimeout(timer);
+  }, [q]);
+
   useEffect(() => {
     function onKeyDown(e) {
       const key = e.key.toLowerCase();
@@ -60,33 +61,38 @@ export function CheatsPage() {
       }
 
       if (!meta && key === "/") {
+        if (/INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
         e.preventDefault();
         searchRef.current?.focus?.();
         return;
       }
 
       if (!meta && key === "n") {
+        if (
+          editOpen ||
+          viewOpen ||
+          paletteOpen ||
+          /INPUT|TEXTAREA/.test(document.activeElement?.tagName)
+        )
+          return;
         e.preventDefault();
         openNew();
         return;
       }
 
-      // Paging without scroll
       if (!meta && key === "arrowright") {
         e.preventDefault();
         nextPage();
-        return;
       }
       if (!meta && key === "arrowleft") {
         e.preventDefault();
         prevPage();
-        return;
       }
 
       if (key === "escape") {
-        if (paletteOpen) setPaletteOpen(false);
-        if (viewOpen) closeView();
-        if (editOpen) closeEditor();
+        setPaletteOpen(false);
+        closeView();
+        closeEditor();
       }
     }
 
@@ -94,10 +100,9 @@ export function CheatsPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [paletteOpen, viewOpen, editOpen]);
 
-  // Reset pagination when filters/search change
   useEffect(() => {
     setPage(1);
-  }, [q, platformFilter, topicFilter]);
+  }, [debouncedQ, platformFilter, topicFilter]);
 
   const platformById = useMemo(() => {
     const m = new Map();
@@ -112,86 +117,60 @@ export function CheatsPage() {
   }, [topics]);
 
   const filtered = useMemo(() => {
-    const text = q.trim().toLowerCase();
+    const words = debouncedQ.trim().toLowerCase().split(/\s+/).filter(Boolean);
     const pf = new Set(uniqInts(platformFilter));
     const tf = new Set(uniqInts(topicFilter));
 
     return (Array.isArray(cheats) ? cheats : []).filter((c) => {
-      const title = String(c?.title || "");
-      const code = String(c?.code || "");
-      const notes = String(c?.notes || "");
-
-      if (text) {
-        const hay = `${title}\n${code}\n${notes}`.toLowerCase();
-        if (!hay.includes(text)) return false;
+      if (words.length > 0) {
+        const content = `${c?.title} ${c?.code} ${c?.notes}`.toLowerCase();
+        if (!words.every((word) => content.includes(word))) return false;
       }
 
-      // OR semantics: any selected platform matches
-      if (pf.size) {
+      if (pf.size > 0) {
         const ids = uniqInts(c?.platform_ids);
-        let ok = false;
-        for (const id of ids) if (pf.has(id)) ok = true;
-        if (!ok) return false;
+        if (!ids.some((id) => pf.has(id))) return false;
       }
 
-      // OR semantics: any selected topic matches
-      if (tf.size) {
+      if (tf.size > 0) {
         const ids = uniqInts(c?.topic_ids);
-        let ok = false;
-        for (const id of ids) if (tf.has(id)) ok = true;
-        if (!ok) return false;
+        if (!ids.some((id) => tf.has(id))) return false;
       }
 
       return true;
     });
-  }, [cheats, q, platformFilter, topicFilter]);
+  }, [cheats, debouncedQ, platformFilter, topicFilter]);
 
-  const totalPages = useMemo(() => {
-    const n = filtered.length;
-    return Math.max(1, Math.ceil(n / PAGE_SIZE));
-  }, [filtered.length]);
-
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const pageItems = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, page]);
 
-  const editingCheat = useMemo(() => {
-    if (!editingId) return null;
-    return (
-      (Array.isArray(cheats) ? cheats : []).find((c) => c.id === editingId) ||
-      null
-    );
-  }, [editingId, cheats]);
-
-  const viewingCheat = useMemo(() => {
-    if (!viewingId) return null;
-    return (
-      (Array.isArray(cheats) ? cheats : []).find((c) => c.id === viewingId) ||
-      null
-    );
-  }, [viewingId, cheats]);
+  const editingCheat = useMemo(
+    () => cheats.find((c) => c.id === editingId) || null,
+    [editingId, cheats],
+  );
+  const viewingCheat = useMemo(
+    () => cheats.find((c) => c.id === viewingId) || null,
+    [viewingId, cheats],
+  );
 
   function togglePlatform(id) {
-    setPlatformFilter((prev) => {
-      const s = new Set(prev);
-      if (s.has(id)) s.delete(id);
-      else s.add(id);
-      return Array.from(s);
-    });
+    setPlatformFilter((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
   }
 
   function toggleTopic(id) {
-    setTopicFilter((prev) => {
-      const s = new Set(prev);
-      if (s.has(id)) s.delete(id);
-      else s.add(id);
-      return Array.from(s);
-    });
+    setTopicFilter((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+    );
   }
 
   function clearFilters() {
     setQ("");
+    setDebouncedQ("");
     setPlatformFilter([]);
     setTopicFilter([]);
     setPage(1);
@@ -201,31 +180,25 @@ export function CheatsPage() {
     setEditingId(null);
     setEditOpen(true);
   }
-
   function openEdit(id) {
     setEditingId(id);
     setEditOpen(true);
   }
-
   function closeEditor() {
     setEditOpen(false);
     setEditingId(null);
   }
-
   function openView(id) {
     setViewingId(id);
     setViewOpen(true);
   }
-
   function closeView() {
     setViewOpen(false);
     setViewingId(null);
   }
-
   function nextPage() {
     setPage((p) => Math.min(totalPages, p + 1));
   }
-
   function prevPage() {
     setPage((p) => Math.max(1, p - 1));
   }
@@ -240,7 +213,6 @@ export function CheatsPage() {
         gap: 14,
       }}
     >
-      {/* Header */}
       <section data-ui="card" style={{ width: "min(980px, 100%)" }}>
         <div
           data-ui="row"
@@ -249,13 +221,9 @@ export function CheatsPage() {
           <div style={{ display: "grid", gap: 6 }}>
             <div data-ui="title">Cheats</div>
             <div data-ui="subtitle">
-              No-scroll. Keyboard-first. <span data-ui="pill">/</span> search •{" "}
-              <span data-ui="pill">
-                <Command size={14} style={{ marginRight: 6 }} />
-                Cmd+K
-              </span>{" "}
-              palette • <span data-ui="pill">N</span> new •{" "}
-              <span data-ui="pill">←/→</span> page
+              No-scroll • <span data-ui="pill">/</span> search •{" "}
+              <span data-ui="pill">Cmd+K</span> palette •{" "}
+              <span data-ui="pill">N</span> new
             </div>
           </div>
 
@@ -268,26 +236,14 @@ export function CheatsPage() {
             >
               {loading ? "Loading…" : refreshing ? "Syncing…" : "Ready"}
             </div>
-
-            <button
-              data-ui="btn-refresh"
-              onClick={refresh}
-              disabled={isBusy}
-              title="Force refresh (ignore cache)"
-            >
-              <RefreshCw
-                size={16}
-                data-ui="btn-icon"
-                data-spin={refreshing ? "true" : "false"}
-              />
+            <button data-ui="btn-refresh" onClick={refresh} disabled={isBusy}>
+              <RefreshCw size={16} data-spin={refreshing} />
               <span>{refreshing ? "Refreshing" : "Refresh"}</span>
             </button>
-
             <button
               data-ui="btn-refresh"
               onClick={openNew}
               disabled={isBusy}
-              title="New cheat (N)"
               style={{ background: "rgba(255,255,255,0.04)" }}
             >
               <Plus size={16} />
@@ -298,44 +254,34 @@ export function CheatsPage() {
 
         <div style={{ height: 14 }} />
 
-        {/* Search */}
         <div data-ui="row" style={{ gap: 10, alignItems: "stretch" }}>
           <div style={{ position: "relative", flex: 1 }}>
             <Search
               size={16}
-              style={{
-                position: "absolute",
-                left: 12,
-                top: 12,
-                opacity: 0.7,
-              }}
+              style={{ position: "absolute", left: 12, top: 12, opacity: 0.7 }}
             />
             <input
               ref={searchRef}
               data-ui="input"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search title / code / notes…  ( / )"
+              placeholder="Search title / code / notes…"
               style={{ paddingLeft: 38 }}
               disabled={loading}
             />
           </div>
-
           <button
             data-ui="btn-refresh"
             onClick={() => setPaletteOpen(true)}
             disabled={loading}
-            title="Command palette (Cmd+K)"
           >
             <Command size={16} />
             <span>Cmd+K</span>
           </button>
-
           <button
             data-ui="btn-refresh"
             onClick={clearFilters}
             disabled={loading}
-            title="Clear search + filters"
           >
             <span>Clear</span>
           </button>
@@ -345,7 +291,6 @@ export function CheatsPage() {
         <div data-ui="divider" />
         <div style={{ height: 12 }} />
 
-        {/* Filters */}
         <div style={{ display: "grid", gap: 10 }}>
           <div style={{ display: "grid", gap: 8 }}>
             <div data-ui="label">Platforms</div>
@@ -353,31 +298,26 @@ export function CheatsPage() {
               {platforms.map((p) => (
                 <button
                   key={p.id}
-                  type="button"
                   data-ui="chip"
-                  data-active={platformFilter.includes(p.id) ? "true" : "false"}
+                  data-active={platformFilter.includes(p.id)}
                   onClick={() => togglePlatform(p.id)}
                   disabled={loading}
-                  title={p.slug}
                 >
                   {p.name}
                 </button>
               ))}
             </div>
           </div>
-
           <div style={{ display: "grid", gap: 8 }}>
             <div data-ui="label">Topics</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {topics.map((t) => (
                 <button
                   key={t.id}
-                  type="button"
                   data-ui="chip"
-                  data-active={topicFilter.includes(t.id) ? "true" : "false"}
+                  data-active={topicFilter.includes(t.id)}
                   onClick={() => toggleTopic(t.id)}
                   disabled={loading}
-                  title={t.slug}
                 >
                   {t.name}
                 </button>
@@ -387,7 +327,6 @@ export function CheatsPage() {
         </div>
       </section>
 
-      {/* Results */}
       <section data-ui="card" style={{ width: "min(980px, 100%)" }}>
         <div
           data-ui="row"
@@ -397,29 +336,24 @@ export function CheatsPage() {
             <div data-ui="label">Results</div>
             <div data-ui="hint">
               {isBusy ? "Loading…" : `${filtered.length} cheats`}
-              {q.trim() ? ` • matching “${q.trim()}”` : ""}
+              {debouncedQ.trim() ? ` • matching "${debouncedQ.trim()}"` : ""}
             </div>
           </div>
-
           <div data-ui="row" style={{ gap: 10 }}>
             <button
               data-ui="btn-refresh"
               onClick={prevPage}
               disabled={loading || page <= 1}
-              title="Previous page (←)"
             >
               <span>Prev</span>
             </button>
-
             <div data-ui="pill" data-variant="info">
               Page {page} / {totalPages}
             </div>
-
             <button
               data-ui="btn-refresh"
               onClick={nextPage}
               disabled={loading || page >= totalPages}
-              title="Next page (→)"
             >
               <span>Next</span>
             </button>
@@ -431,11 +365,13 @@ export function CheatsPage() {
         {isBusy ? (
           <SkeletonCard count={6} />
         ) : pageItems.length ? (
-          <div data-ui="stack">
+          /* Updated: data-ui="grid" handles the 50% width columns */
+          <div data-ui="grid">
             {pageItems.map((c) => (
               <CheatItem
                 key={c.id}
                 cheat={c}
+                query={debouncedQ}
                 platformById={platformById}
                 topicById={topicById}
                 onView={() => openView(c.id)}
@@ -446,14 +382,17 @@ export function CheatsPage() {
         ) : (
           <div data-ui="empty">
             <div data-ui="empty-title">No matches</div>
-            <div data-ui="hint">
-              Try clearing filters or searching different text.
-            </div>
+            <button
+              data-ui="btn-refresh"
+              onClick={clearFilters}
+              style={{ marginTop: 10 }}
+            >
+              Clear search and filters
+            </button>
           </div>
         )}
       </section>
 
-      {/* View modal (copy / edit / delete inside) */}
       <CheatViewModal
         open={viewOpen}
         onClose={closeView}
@@ -465,9 +404,13 @@ export function CheatsPage() {
           closeView();
           openEdit(viewingId);
         }}
+        onDelete={async () => {
+          if (!confirm(`Delete "${viewingCheat?.title}"?`)) return;
+          await deleteCheat(viewingCheat.id);
+          closeView();
+        }}
       />
 
-      {/* Edit/New modal */}
       <CheatModal
         open={editOpen}
         onClose={closeEditor}
@@ -475,27 +418,16 @@ export function CheatsPage() {
         cheat={editingCheat}
       />
 
-      {/* Command palette */}
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
-        cheats={cheats}
-        platforms={platforms}
-        topics={topics}
-        onNew={() => {
-          setPaletteOpen(false);
-          openNew();
-        }}
-        onOpenCheat={(id) => {
-          setPaletteOpen(false);
-          openView(id); // palette opens VIEW (fast)
-        }}
-        onSetSearch={(text) => {
-          setPaletteOpen(false);
-          setQ(text);
-          searchRef.current?.focus?.();
-        }}
-        onClear={clearFilters}
+        items={cheats.map((c) => ({
+          id: c.id,
+          title: c.title,
+          subtitle: c.notes,
+          keywords: c.code,
+          onSelect: () => openView(c.id),
+        }))}
       />
     </div>
   );

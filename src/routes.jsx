@@ -12,6 +12,7 @@ import { PlatformForm } from "./components/platforms/PlatformForm.jsx";
 import { CheatsPage } from "./pages/CheatsPage.jsx";
 import { CheatForm } from "./components/cheats/CheatForm.jsx";
 import { VisualDashboard } from "./components/shared/VisualDashboard.jsx";
+import { IdePage } from "./pages/IdePage.jsx";
 
 export const routes = [
   {
@@ -22,7 +23,7 @@ export const routes = [
       // public
       { path: "login", element: <LoginPage /> },
       { path: "signup", element: <SignupPage /> },
-
+      { path: "ide", element: <IdePage /> },
       // protected group
       {
         element: <ProtectedRoute />,

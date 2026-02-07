@@ -1,17 +1,27 @@
 // src/components/cheats/CheatForm.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Save, X } from "lucide-react";
 import { useData } from "../../hooks/useData";
 import { useToastTrigger } from "../../hooks/useToast";
-import { Save, X, ArrowLeft } from "lucide-react";
+
+function uniqInts(arr) {
+  return Array.from(
+    new Set((Array.isArray(arr) ? arr : []).filter(Number.isFinite)),
+  );
+}
 
 export function CheatForm() {
   const { id } = useParams();
   const nav = useNavigate();
   const { addToast } = useToastTrigger();
 
-  const inEditMode = Boolean(id);
-  const cheatId = inEditMode ? Number(id) : null;
+  const cheatId = useMemo(() => {
+    const n = Number(id);
+    return Number.isFinite(n) ? n : null;
+  }, [id]);
+
+  const inEditMode = Boolean(cheatId);
 
   const {
     cheats = [],
@@ -23,48 +33,48 @@ export function CheatForm() {
 
   const editingCheat = useMemo(() => {
     if (!inEditMode) return null;
-    return cheats.find((c) => c.id === cheatId) || null;
+    return (Array.isArray(cheats) ? cheats : []).find((c) => c.id === cheatId) || null;
   }, [inEditMode, cheatId, cheats]);
-
-  const [formData, setFormData] = useState({
-    title: "",
-    code: "",
-    notes: "",
-    is_public: true,
-    platform_ids: [],
-    topic_ids: [],
-  });
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
 
-  useEffect(() => {
-    if (inEditMode) {
-      if (!editingCheat) return;
-      setFormData({
+  const initial = useMemo(() => {
+    if (inEditMode && editingCheat) {
+      return {
         title: editingCheat.title ?? "",
         code: editingCheat.code ?? "",
         notes: editingCheat.notes ?? "",
         is_public: Boolean(editingCheat.is_public),
-        platform_ids: Array.isArray(editingCheat.platform_ids)
-          ? editingCheat.platform_ids
-          : [],
-        topic_ids: Array.isArray(editingCheat.topic_ids)
-          ? editingCheat.topic_ids
-          : [],
-      });
-    } else {
-      setFormData({
-        title: "",
-        code: "",
-        notes: "",
-        is_public: true,
-        platform_ids: [],
-        topic_ids: [],
-      });
+        platform_ids: uniqInts(editingCheat.platform_ids),
+        topic_ids: uniqInts(editingCheat.topic_ids),
+      };
     }
-    setErr(null);
+    return {
+      title: "",
+      code: "",
+      notes: "",
+      is_public: true,
+      platform_ids: [],
+      topic_ids: [],
+    };
   }, [inEditMode, editingCheat]);
+
+  const [formData, setFormData] = useState(initial);
+
+  useEffect(() => {
+    setFormData(initial);
+    setErr(null);
+    setSaving(false);
+  }, [initial]);
+
+  useEffect(() => {
+    function onKey(e) {
+      if (e.key === "Escape") nav("/cheats");
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [nav]);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -76,30 +86,15 @@ export function CheatForm() {
 
   const toggleId = (key, idVal) => {
     setFormData((p) => {
-      const set = new Set(p[key]);
-      if (set.has(idVal)) set.delete(idVal);
-      else set.add(idVal);
-      return { ...p, [key]: Array.from(set) };
+      const s = new Set(uniqInts(p[key]));
+      if (s.has(idVal)) s.delete(idVal);
+      else s.add(idVal);
+      return { ...p, [key]: Array.from(s) };
     });
   };
 
-  const ctaColor = "#eb5638";
-
-  const saveBtnStyle = {
-    height: 44,
-    padding: "0 14px",
-    borderRadius: 14,
-    border: "1px solid rgba(255,255,255,0.12)",
-    background: `linear-gradient(180deg, ${ctaColor} 0%, rgba(235,86,56,0.90) 60%, rgba(235,86,56,0.82) 100%)`,
-    color: "rgba(255,255,255,0.96)",
-    fontWeight: 900,
-    letterSpacing: 0.2,
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 8,
-    cursor: saving ? "not-allowed" : "pointer",
-    boxShadow: "0 16px 40px rgba(0,0,0,0.45), 0 10px 34px rgba(235,86,56,0.18)",
-  };
+  const canSave =
+    Boolean(formData.title.trim()) && Boolean(formData.code.trim()) && !saving;
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -110,29 +105,25 @@ export function CheatForm() {
 
     setSaving(true);
     try {
+      const payload = {
+        ...formData,
+        platform_ids: uniqInts(formData.platform_ids),
+        topic_ids: uniqInts(formData.topic_ids),
+      };
+
       if (inEditMode) {
-        await updateCheat(cheatId, formData);
-        addToast({
-          type: "success",
-          title: "Updated",
-          message: "Cheat saved.",
-        });
+        await updateCheat(cheatId, payload);
+        addToast({ type: "success", title: "Updated", message: "Cheat saved." });
       } else {
-        await createCheat(formData);
-        addToast({
-          type: "success",
-          title: "Created",
-          message: "Cheat created.",
-        });
+        await createCheat(payload);
+        addToast({ type: "success", title: "Created", message: "Cheat created." });
       }
+
       nav("/cheats");
     } catch (x) {
-      setErr(x?.message || "Save failed.");
-      addToast({
-        type: "error",
-        title: "Save failed",
-        message: x?.message || "Unable to save.",
-      });
+      const msg = x?.message || "Save failed.";
+      setErr(msg);
+      addToast({ type: "error", title: "Save failed", message: msg });
     } finally {
       setSaving(false);
     }
@@ -140,17 +131,10 @@ export function CheatForm() {
 
   if (inEditMode && !editingCheat) {
     return (
-      <div
-        data-ui="card"
-        style={{ width: "min(980px, 100%)", margin: "0 auto" }}
-      >
-        <div data-ui="label">Cheat not found</div>
+      <div data-ui="card" style={{ width: "min(980px, 100%)", margin: "0 auto" }}>
+        <div data-ui="title">Cheat not found</div>
         <div style={{ height: 10 }} />
-        <button
-          data-ui="btn-refresh"
-          type="button"
-          onClick={() => nav("/cheats")}
-        >
+        <button data-ui="btn-refresh" type="button" onClick={() => nav("/cheats")}>
           <ArrowLeft size={16} />
           <span>Back</span>
         </button>
@@ -161,17 +145,10 @@ export function CheatForm() {
   return (
     <div style={{ width: "min(980px, 100%)", margin: "0 auto", padding: 14 }}>
       <section data-ui="card">
-        <div
-          data-ui="row"
-          style={{ justifyContent: "space-between", flexWrap: "wrap" }}
-        >
+        <div data-ui="row" style={{ justifyContent: "space-between", flexWrap: "wrap" }}>
           <div style={{ display: "grid", gap: 6 }}>
             <div data-ui="title">{inEditMode ? "Edit Cheat" : "New Cheat"}</div>
-            <div data-ui="hint">
-              {inEditMode
-                ? "Update the cheat and save."
-                : "Fill it out and create a new cheat."}
-            </div>
+            <div data-ui="subtitle">No scroll. Clean. Fast. Keyboard-first.</div>
           </div>
 
           <div data-ui="row" style={{ gap: 10 }}>
@@ -180,7 +157,7 @@ export function CheatForm() {
               type="button"
               onClick={() => nav("/cheats")}
               disabled={saving}
-              title="Cancel"
+              title="Cancel (Esc)"
             >
               <X size={16} />
               <span>Cancel</span>
@@ -201,7 +178,7 @@ export function CheatForm() {
               value={formData.title}
               onChange={onChange}
               disabled={saving}
-              placeholder="e.g. CORS: credentials means no *"
+              placeholder="Short, searchable title"
             />
           </label>
 
@@ -215,7 +192,14 @@ export function CheatForm() {
               disabled={saving}
               rows={10}
               placeholder="Paste code here…"
-              style={{ resize: "vertical" }}
+              style={{
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace',
+                fontSize: 12,
+                lineHeight: "16px",
+                resize: "vertical",
+                whiteSpace: "pre",
+              }}
             />
           </label>
 
@@ -228,12 +212,12 @@ export function CheatForm() {
               onChange={onChange}
               disabled={saving}
               rows={4}
-              placeholder="Optional context, gotchas, links…"
+              placeholder="Optional notes…"
               style={{ resize: "vertical" }}
             />
           </label>
 
-          <label data-ui="row" style={{ gap: 10, alignItems: "center" }}>
+          <label style={{ display: "flex", gap: 10, alignItems: "center" }}>
             <input
               type="checkbox"
               name="is_public"
@@ -241,20 +225,19 @@ export function CheatForm() {
               onChange={onChange}
               disabled={saving}
             />
-            <span>Public</span>
+            <span style={{ fontWeight: 900 }}>Public</span>
+            <span data-ui="hint">Seed cheats should be Public.</span>
           </label>
 
           <div style={{ display: "grid", gap: 8 }}>
             <div data-ui="label">Platforms</div>
-            <div data-ui="row" style={{ gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {platforms.map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   data-ui="chip"
-                  data-active={
-                    formData.platform_ids.includes(p.id) ? "true" : "false"
-                  }
+                  data-active={formData.platform_ids.includes(p.id) ? "true" : "false"}
                   onClick={() => toggleId("platform_ids", p.id)}
                   disabled={saving}
                   title={p.slug}
@@ -267,17 +250,16 @@ export function CheatForm() {
 
           <div style={{ display: "grid", gap: 8 }}>
             <div data-ui="label">Topics</div>
-            <div data-ui="row" style={{ gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
               {topics.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   data-ui="chip"
-                  data-active={
-                    formData.topic_ids.includes(t.id) ? "true" : "false"
-                  }
+                  data-active={formData.topic_ids.includes(t.id) ? "true" : "false"}
                   onClick={() => toggleId("topic_ids", t.id)}
                   disabled={saving}
+                  title={t.slug}
                 >
                   {t.name}
                 </button>
@@ -286,15 +268,13 @@ export function CheatForm() {
           </div>
 
           {err ? (
-            <div data-ui="hint" style={{ color: "rgba(255,120,120,0.95)" }}>
-              {err}
+            <div data-ui="empty">
+              <div data-ui="empty-title">Fix this</div>
+              <div data-ui="hint">{err}</div>
             </div>
           ) : null}
 
-          <div
-            data-ui="row"
-            style={{ gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}
-          >
+          <div data-ui="row" style={{ gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
             <button
               type="button"
               data-ui="btn-refresh"
@@ -305,11 +285,9 @@ export function CheatForm() {
               <span>Cancel</span>
             </button>
 
-            <button type="submit" disabled={saving} style={saveBtnStyle}>
+            <button type="submit" data-ui="btn-refresh" disabled={!canSave}>
               <Save size={16} />
-              <span>
-                {saving ? "Saving…" : inEditMode ? "Update" : "Create"}
-              </span>
+              <span>{saving ? "Saving…" : inEditMode ? "Update" : "Create"}</span>
             </button>
           </div>
         </form>

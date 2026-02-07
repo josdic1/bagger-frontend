@@ -1,7 +1,10 @@
 import { useCallback, useContext, useState } from "react";
 import { ToastContext } from "../contexts/ToastContext";
 
-// App owns toast state
+/**
+ * HOOK 1: useToast
+ * Used ONCE at the app root level to manage the notification state.
+ */
 export function useToast() {
   const [toasts, setToasts] = useState([]);
 
@@ -11,7 +14,7 @@ export function useToast() {
 
     const next = {
       id,
-      type: toast?.type ?? "info",
+      type: toast?.type ?? "info", // e.g., 'success', 'error', 'warning'
       title: toast?.title ?? "Notice",
       message: toast?.message ?? "",
       duration,
@@ -33,12 +36,16 @@ export function useToast() {
   return { toasts, addToast, removeToast };
 }
 
-// Everyone else triggers toasts via context
+/**
+ * HOOK 2: useToastTrigger
+ * Used by ANY component to fire off a toast notification.
+ */
 export function useToastTrigger() {
   const ctx = useContext(ToastContext);
-  if (!ctx)
+  if (!ctx) {
     throw new Error(
       "useToastTrigger must be used within ToastContext.Provider",
     );
-  return ctx; // { addToast }
+  }
+  return ctx; // Returns { addToast }
 }

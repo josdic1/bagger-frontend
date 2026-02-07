@@ -2,15 +2,18 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useToastTrigger } from "../../hooks/useToast";
 import { useAuth } from "../../hooks/useAuth";
-import { Activity } from "lucide-react";
+import { useData } from "../../hooks/useData";
+import { Activity, CodeXml, Download } from "lucide-react";
 
 export function NavBar({ onOpenPalette }) {
   const nav = useNavigate();
   const location = useLocation();
   const { addToast } = useToastTrigger();
   const { user, logout } = useAuth();
+  const { platforms = [], topics = [], cheats = [] } = useData();
 
   const isDataActive = location.pathname === "/data";
+  const isIdeActive = location.pathname === "/ide";
 
   function handleLogout() {
     logout();
@@ -22,6 +25,33 @@ export function NavBar({ onOpenPalette }) {
     });
 
     nav("/login", { replace: true });
+  }
+
+  function downloadData() {
+    const data = {
+      platforms,
+      topics,
+      cheats,
+      exported_at: new Date().toISOString(),
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "bagger_data_json_020726.txt";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    addToast({
+      type: "success",
+      title: "Downloaded",
+      message: "Data exported successfully.",
+    });
   }
 
   return (
@@ -54,10 +84,10 @@ export function NavBar({ onOpenPalette }) {
           Palette
         </button>
 
-        {/* DEFCON Dashboard Link */}
         <Link
           to="/data"
           data-ui="nav-link"
+          className={isDataActive ? "active" : ""}
           style={{ display: "flex", alignItems: "center", gap: "8px" }}
         >
           <Activity
@@ -71,6 +101,40 @@ export function NavBar({ onOpenPalette }) {
           />
           <span>Data</span>
         </Link>
+
+        <Link
+          to="/ide"
+          data-ui="nav-link"
+          className={isIdeActive ? "active" : ""}
+          style={{ display: "flex", alignItems: "center", gap: "8px" }}
+        >
+          <CodeXml
+            size={20}
+            strokeWidth={2.5}
+            style={{
+              color: isIdeActive ? "#f0db4f" : "inherit",
+              filter: isIdeActive ? "drop-shadow(0 0 5px #f0db4f)" : "none",
+              transition: "all 0.3s ease",
+            }}
+          />
+          <span>IDE</span>
+        </Link>
+
+        <button
+          type="button"
+          data-ui="btn-refresh"
+          style={{
+            height: 32,
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+          onClick={downloadData}
+          title="Export all data as JSON"
+        >
+          <Download size={16} />
+          <span>Export</span>
+        </button>
       </div>
 
       <div data-ui="nav-right">

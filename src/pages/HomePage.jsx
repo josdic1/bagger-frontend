@@ -67,37 +67,37 @@ export function HomePage() {
   // Idle redirect to Cheats (5s). IMPORTANT: do NOT cancel on mousemove/scroll.
   const idleTimer = useRef(null);
 
-  useEffect(() => {
-    // Don’t redirect while loading/syncing
-    if (isBusy) return;
+  // useEffect(() => {
+  //   // Don’t redirect while loading/syncing
+  //   if (isBusy) return;
 
-    // Restart timer any time "working state" changes
-    if (idleTimer.current) clearTimeout(idleTimer.current);
+  //   // Restart timer any time "working state" changes
+  //   if (idleTimer.current) clearTimeout(idleTimer.current);
 
-    idleTimer.current = setTimeout(() => {
-      const userHasStartedWorking =
-        !!q || selectedPlatformIds.length > 0 || selectedTopicIds.length > 0;
+  //   idleTimer.current = setTimeout(() => {
+  //     const userHasStartedWorking =
+  //       !!q || selectedPlatformIds.length > 0 || selectedTopicIds.length > 0;
 
-      if (!userHasStartedWorking) {
-        nav("/cheats");
-      }
-    }, 5000);
+  //     if (!userHasStartedWorking) {
+  //       nav("/cheats");
+  //     }
+  //   }, 5000);
 
-    // Only cancel on intentional interaction
-    const cancel = () => {
-      if (idleTimer.current) clearTimeout(idleTimer.current);
-      idleTimer.current = null;
-    };
+  //   // Only cancel on intentional interaction
+  //   const cancel = () => {
+  //     if (idleTimer.current) clearTimeout(idleTimer.current);
+  //     idleTimer.current = null;
+  //   };
 
-    window.addEventListener("pointerdown", cancel, { passive: true });
-    window.addEventListener("keydown", cancel);
+  //   window.addEventListener("pointerdown", cancel, { passive: true });
+  //   window.addEventListener("keydown", cancel);
 
-    return () => {
-      if (idleTimer.current) clearTimeout(idleTimer.current);
-      window.removeEventListener("pointerdown", cancel);
-      window.removeEventListener("keydown", cancel);
-    };
-  }, [isBusy, nav, q, selectedPlatformIds.length, selectedTopicIds.length]);
+  //   return () => {
+  //     if (idleTimer.current) clearTimeout(idleTimer.current);
+  //     window.removeEventListener("pointerdown", cancel);
+  //     window.removeEventListener("keydown", cancel);
+  //   };
+  // }, [isBusy, nav, q, selectedPlatformIds.length, selectedTopicIds.length]);
 
   const viewingCheat = useMemo(() => {
     if (!viewCheatId) return null;
