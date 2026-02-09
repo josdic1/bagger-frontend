@@ -7,7 +7,6 @@ import { CheatViewModal } from "../components/cheats/CheatViewModal";
 import { CommandPalette } from "../components/cheats/CommandPalette";
 import { SkeletonCard } from "../components/shared/SkeletonCard";
 
-// Updated: Twice as many cards per page
 const PAGE_SIZE = 20;
 
 function uniqInts(arr) {
@@ -27,14 +26,12 @@ export function CheatsPage() {
     refresh,
   } = useData();
 
-  // UI state
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [platformFilter, setPlatformFilter] = useState([]);
   const [topicFilter, setTopicFilter] = useState([]);
   const [page, setPage] = useState(1);
 
-  // Modal state
   const [editOpen, setEditOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [viewOpen, setViewOpen] = useState(false);
@@ -49,46 +46,59 @@ export function CheatsPage() {
     return () => clearTimeout(timer);
   }, [q]);
 
+  // Handle Keyboard Shortcuts
   useEffect(() => {
     function onKeyDown(e) {
       const key = e.key.toLowerCase();
       const meta = e.metaKey || e.ctrlKey;
+      const isInput = /INPUT|TEXTAREA/.test(document.activeElement?.tagName);
 
+      // Cmd+K: Open Command Palette
       if (meta && key === "k") {
         e.preventDefault();
         setPaletteOpen(true);
         return;
       }
 
+      // /: Focus Search
       if (!meta && key === "/") {
-        if (/INPUT|TEXTAREA/.test(document.activeElement?.tagName)) return;
+        if (isInput) return;
         e.preventDefault();
         searchRef.current?.focus?.();
         return;
       }
 
+      // Alt: Clear search and all filters
+      if (e.altKey && !meta) {
+        // We allow this even if an input is focused to quickly reset
+        e.preventDefault();
+        clearFilters();
+        // Blur the search input if it was active
+        if (isInput) document.activeElement.blur();
+        return;
+      }
+
+      // N: New Cheat
       if (!meta && key === "n") {
-        if (
-          editOpen ||
-          viewOpen ||
-          paletteOpen ||
-          /INPUT|TEXTAREA/.test(document.activeElement?.tagName)
-        )
-          return;
+        if (editOpen || viewOpen || paletteOpen || isInput) return;
         e.preventDefault();
         openNew();
         return;
       }
 
+      // Arrow Keys: Pagination
       if (!meta && key === "arrowright") {
+        if (isInput) return;
         e.preventDefault();
         nextPage();
       }
       if (!meta && key === "arrowleft") {
+        if (isInput) return;
         e.preventDefault();
         prevPage();
       }
 
+      // Escape: Close all modals
       if (key === "escape") {
         setPaletteOpen(false);
         closeView();
@@ -222,8 +232,9 @@ export function CheatsPage() {
             <div data-ui="title">Cheats</div>
             <div data-ui="subtitle">
               No-scroll • <span data-ui="pill">/</span> search •{" "}
-              <span data-ui="pill">Cmd+K</span> palette •{" "}
-              <span data-ui="pill">N</span> new
+              <span data-ui="pill">⌘K</span> palette •{" "}
+              <span data-ui="pill">N</span> new •{" "}
+              <span data-ui="pill">Alt</span> reset
             </div>
           </div>
 
@@ -365,7 +376,6 @@ export function CheatsPage() {
         {isBusy ? (
           <SkeletonCard count={6} />
         ) : pageItems.length ? (
-          /* Updated: data-ui="grid" handles the 50% width columns */
           <div data-ui="grid">
             {pageItems.map((c) => (
               <CheatItem
