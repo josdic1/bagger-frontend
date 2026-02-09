@@ -1,15 +1,4 @@
 /* src/index.css */
-
-/* =========================================================
-   THEME LAYERS
-   - Each theme file should define :root[data-theme="x"] vars
-   - Do NOT put theme-specific CSS below in this file
-   ========================================================= */
-@import "./themes/minimal/theme.css";
-@import "./themes/haunted/theme.css";
-@import "./themes/jungle/theme.css";
-@import "./themes/outrun/theme.css";
-
 /* =========================================================
    BASE TOKENS (default / fallback)
    ========================================================= */
