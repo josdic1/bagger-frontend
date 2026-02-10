@@ -28,7 +28,7 @@ export const routes = [
       {
         element: <ProtectedRoute />,
         children: [
-          { index: true, element: <HomePage /> },
+          { index: true, element: <CheatsPage /> },
           { path: "data", element: <VisualDashboard /> },
 
           { path: "topics", element: <TopicsPage /> },
