@@ -94,22 +94,30 @@ export function SignupPage() {
         <div data-ui="stack">
           <input
             data-ui="input"
+            id="signup-name"
+            name="name"
             type="text"
             placeholder="Name"
             autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+
           <input
             data-ui="input"
+            id="signup-email"
+            name="email"
             type="email"
             placeholder="Email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+
           <input
             data-ui="input"
+            id="signup-password"
+            name="password"
             type="password"
             placeholder="Password"
             autoComplete="new-password"

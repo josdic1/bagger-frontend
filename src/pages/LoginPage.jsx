@@ -93,14 +93,19 @@ export function LoginPage() {
         <div data-ui="stack">
           <input
             data-ui="input"
+            id="login-email"
+            name="email"
             type="email"
             placeholder="Email"
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+
           <input
             data-ui="input"
+            id="login-password"
+            name="password"
             type="password"
             placeholder="Password"
             autoComplete="current-password"
