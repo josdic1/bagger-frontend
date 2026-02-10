@@ -1,11 +1,14 @@
 // src/utils/api.js
 
 export const getApiUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL;
+  const raw = import.meta.env.VITE_API_URL;
 
-  if (!apiUrl) {
-    throw new Error("VITE_API_URL is not defined. Set it in your .env file.");
+  if (!raw) {
+    throw new Error("VITE_API_URL is not defined. Set it in Netlify env vars.");
   }
+
+  // normalize: remove trailing slash if present
+  const apiUrl = raw.endsWith("/") ? raw.slice(0, -1) : raw;
 
   if (import.meta.env.PROD && apiUrl.includes("localhost")) {
     throw new Error(
@@ -15,7 +18,6 @@ export const getApiUrl = () => {
 
   return apiUrl;
 };
-
 /**
  * FIXED: This helper was missing and causing your ReferenceError.
  * It builds the full URL by combining the base and the path.
